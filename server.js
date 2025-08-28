@@ -9,10 +9,50 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 
-// A função de requisição agora apenas LÊ o cache.
-const handleJogosRequest = async (dia, res) => {
-    console.log(`Recebida requisição para os dados cacheados de '${dia}'.`);
-    const cachedData = getCache(dia);
+/**
+ * Retorna a data formatada como YYYY-MM-DD.
+ * @param {Date} date - O objeto de data.
+ * @returns {string} - A data formatada.
+ */
+function getFormattedDate(date) {
+    // Ajuste para o fuso horário de São Paulo (UTC-3)
+    const offset = -3 * 60;
+    const localDate = new Date(date.getTime() + offset * 60 * 1000);
+    
+    const year = localDate.getUTCFullYear();
+    const month = String(localDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(localDate.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+
+// A função de requisição agora calcula a data e busca o cache correspondente.
+const handleJogosRequest = (dia, res) => {
+    const hoje = new Date();
+    let dataAlvo;
+
+    switch (dia) {
+        case 'ontem':
+            const ontem = new Date(hoje);
+            ontem.setDate(hoje.getDate() - 1);
+            dataAlvo = getFormattedDate(ontem);
+            break;
+        case 'amanha':
+            const amanha = new Date(hoje);
+            amanha.setDate(hoje.getDate() + 1);
+            dataAlvo = getFormattedDate(amanha);
+            break;
+        case 'agora':
+            dataAlvo = 'agora';
+            break;
+        case 'hoje':
+        default:
+            dataAlvo = getFormattedDate(hoje);
+            break;
+    }
+
+    console.log(`Recebida requisição para '${dia}', buscando cache da chave: '${dataAlvo}'.`);
+    const cachedData = getCache(dataAlvo);
 
     if (cachedData) {
         return res.status(200).json(cachedData);
@@ -20,7 +60,7 @@ const handleJogosRequest = async (dia, res) => {
 
     // Se o cache ainda não foi criado, pede para o usuário aguardar.
     res.status(503).json({ 
-        message: `Os dados para '${dia}' estão sendo preparados. Por favor, tente novamente em um minuto.` 
+        message: `Os dados para '${dia}' (data: ${dataAlvo}) estão sendo preparados. Por favor, tente novamente em um minuto.` 
     });
 };
 
