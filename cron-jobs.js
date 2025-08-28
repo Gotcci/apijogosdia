@@ -5,16 +5,27 @@ import { setCache } from './cache.js';
 
 // TAREFA 1: Atualizar o cache dos jogos estáticos (diariamente)
 async function updateDailyCache() {
-    console.log('CRON DIÁRIO: Iniciando atualização do cache para ontem, hoje e amanhã...');
-    const dias = ['ontem', 'hoje', 'amanha'];
-    for (const dia of dias) {
+    console.log('CRON DIÁRIO: Iniciando atualização do cache para hoje e amanhã...');
+    
+    // Mapeamento corrigido: A chave do cache aponta para a seção do site a ser raspada.
+    const mapeamentoDias = {
+        'hoje': 'ontem',  // Para obter os jogos de 'hoje', buscamos na URL de 'ontem'.
+        'amanha': 'hoje' // Para obter os jogos de 'amanhã', buscamos na URL de 'hoje'.
+    };
+
+    for (const [diaCache, diaScraper] of Object.entries(mapeamentoDias)) {
         try {
-            const dados = await buscarJogos(dia);
-            setCache(dia, dados);
+            console.log(`Atualizando cache para '${diaCache}' usando a URL de '${diaScraper}'...`);
+            const dados = await buscarJogos(diaScraper);
+            setCache(diaCache, dados);
         } catch (error) {
-            console.error(`CRON DIÁRIO: Falha ao atualizar cache para '${dia}':`, error);
+            console.error(`CRON DIÁRIO: Falha ao atualizar cache para '${diaCache}':`, error);
         }
     }
+    
+    // Como a fonte de 'ontem' agora é usada para 'hoje', limpamos o cache de 'ontem' para evitar dados errados.
+    setCache('ontem', { message: "Dados para 'ontem' não estão disponíveis no momento." });
+
     console.log('CRON DIÁRIO: Atualização finalizada.');
 }
 
@@ -38,13 +49,13 @@ export function startScheduledJobs() {
         timezone: "America/Sao_Paulo"
     });
 
-    // ✅ ALTERAÇÃO: Agenda a tarefa de jogos ao vivo para rodar a cada 2 minutos.
-    cron.schedule('*/2 * * * *', updateLiveCache, {
+    // ✅ CORREÇÃO: Agenda a tarefa de jogos ao vivo para rodar a cada 1 minuto.
+    cron.schedule('* * * * *', updateLiveCache, {
         scheduled: true,
         timezone: "America/Sao_Paulo"
     });
 
-    console.log('Tarefas agendadas: Diária (00:01) e Ao Vivo (a cada 2 min).');
+    console.log('Tarefas agendadas: Diária (00:01) e Ao Vivo (a cada 1 min).');
 
     // Executa as tarefas uma vez na inicialização para criar o primeiro cache
     console.log('Executando aquecimento de cache inicial...');
